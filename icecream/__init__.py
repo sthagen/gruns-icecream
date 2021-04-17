@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# IceCream - A little library for sweet and creamy print debugging.
+# IceCream - Never use print() to debug again
 #
 # Ansgar Grunseid
 # grunseid.com
@@ -13,6 +13,7 @@
 from os.path import dirname, join as pjoin
 
 from .icecream import *  # noqa
+from .builtins import install, uninstall
 
 # Import all variables in __version__.py without explicit imports.
 meta = {}

@@ -10,13 +10,22 @@
 </p>
 
 
-### IceCream is a little library for sweet and creamy debugging.
+### IceCream — Never use print() to debug again
 
 Do you ever use `print()` or `log()` to debug your code? Of course you
 do. IceCream, or `ic` for short, makes print debugging a little sweeter.
 
-IceCream is well tested, [permissively licensed](LICENSE.txt), and supports
-Python 2, Python 3, PyPy2, and PyPy3.
+`ic()` is like `print()`, but better:
+
+  1. It prints both expressions/variable names and their values.
+  2. It's 40% faster to type.
+  3. Data structures are pretty printed.
+  4. Output is syntax highlighted.
+  5. It optionally includes program context: filename, line number, and
+     parent function.
+
+IceCream is well tested, [permissively licensed](LICENSE.txt), and
+supports Python 2, Python 3, PyPy2, and PyPy3.
 
 
 ### Inspect Variables
@@ -29,7 +38,6 @@ print(foo('123'))
 ```
 
 or the more thorough
-
 
 ```python
 print("foo('123')", foo('123'))
@@ -102,7 +110,7 @@ from icecream import ic
 def foo():
     ic()
     first()
-    
+
     if expression:
         ic()
         second()
@@ -176,6 +184,50 @@ ic| 3: 3
 code with `ic()` breaks.
 
 
+### Import Tricks
+
+To make `ic()` available in every file without needing to be imported in
+every file, you can `install()` it. For example, in a root `A.py`:
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from icecream import install
+install()
+
+from B import foo
+foo()
+```
+
+and then in `B.py`, which is imported by `A.py`, just call `ic()`:
+
+```
+# -*- coding: utf-8 -*-
+
+def foo():
+    x = 3
+    ic(x)
+```
+
+`install()` adds `ic()` to the
+[builtins](https://docs.python.org/3.8/library/builtins.html) module,
+which is shared amongst all files imported by the interpreter.
+Similarly, `ic()` can later be `uninstall()`ed, too.
+
+`ic()` can also be imported in a manner that fails gracefully if
+IceCream isn't installed, like in production environments (i.e. not
+development). To that end, this fallback import snippet may prove
+useful:
+
+```python
+try:
+    from icecream import ic
+except ImportError:  # Graceful fallback if IceCream isn't installed.
+    ic = lambda *a: None if not a else (a[0] if len(a) == 1 else a)  # noqa
+```
+
+
 ### Configuration
 
 `ic.configureOutput(prefix, outputFunction, argToStringFunction,
@@ -189,7 +241,7 @@ arguments.
 >>> from icecream import ic
 >>> ic.configureOutput(prefix='hello -> ')
 >>> ic('world')
-hello -> 'world': 'world'
+hello -> 'world'
 ```
 
 `prefix` can optionally be a function, too.
@@ -229,12 +281,12 @@ custom fashion.
 
 ```pycon
 >>> from icecream import ic
->>> 
+>>>
 >>> def toString(obj):
 >>>    if isinstance(obj, str):
 >>>        return '[!string %r with length %i!]' % (obj, len(obj))
 >>>    return repr(obj)
->>> 
+>>>
 >>> ic.configureOutput(argToStringFunction=toString)
 >>> ic(7, 'hello')
 ic| 7: 7, 'hello': [!string 'hello' with length 5!]
@@ -246,7 +298,7 @@ number, and parent function to `ic()`'s output.
 ```pycon
 >>> from icecream import ic
 >>> ic.configureOutput(includeContext=True)
->>> 
+>>>
 >>> def foo():
 >>>   ic('str')
 >>> foo()
@@ -265,29 +317,27 @@ $ pip install icecream
 ```
 
 
-### Import
+### Related Python libraries
 
-It's often useful to import `ic()` in a manner that falls back gracefully
-if IceCream isn't installed, like in production environments (i.e. not
-development). To that end, this fallback import snippet may prove useful:
-
-```python
-try:
-    from icecream import ic
-except ImportError:  # Graceful fallback if IceCream isn't installed.
-    ic = lambda *a: None if not a else (a[0] if len(a) == 1 else a)  # noqa
-```
+`ic()` uses [**`executing`**](https://github.com/alexmojaki/executing)
+by [**@alexmojaki**](https://github.com/alexmojaki) to reliably locate
+`ic()` calls in Python source. It's magic.
 
 
 ### IceCream in Other Languages
 
-IceCream should be enjoyed with every language.
+Delicious IceCream should be enjoyed in every language.
 
 - Dart: [icecream](https://github.com/HallerPatrick/icecream)
 - Rust: [icecream-rs](https://github.com/ericchang00/icecream-rs)
 - Node.js: [node-icecream](https://github.com/jmerle/node-icecream)
 - C++: [IceCream-Cpp](https://github.com/renatoGarcia/icecream-cpp)
 - PHP: [icecream-php](https://github.com/ntzm/icecream-php)
+- Go: [icecream-go](https://github.com/WAY29/icecream-go)
+- Ruby: [Ricecream](https://github.com/nodai2hITC/ricecream)
+- Java: [icecream-java](https://github.com/Akshay-Thakare/icecream-java)
+- R: [icecream](https://github.com/DominikRafacz/icecream)
+- Lua: [icecream-lua](https://github.com/wlingze/icecream-lua)
 
 If you'd like a similar `ic()` function in your favorite language, please open a
 pull request! IceCream's goal is to sweeten print debugging with a handy-dandy

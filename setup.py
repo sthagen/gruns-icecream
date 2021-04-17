@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# IceCream - A little library for sweet and creamy print debugging.
+# IceCream - Never use print() to debug again
 #
 # Ansgar Grunseid
 # grunseid.com
@@ -93,6 +93,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Programming Language :: Python :: Implementation :: CPython',
     ],

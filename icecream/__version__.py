@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# IceCream - A little library for sweet and creamy print debugging.
+# IceCream - Never use print() to debug again
 #
 # Ansgar Grunseid
 # grunseid.com
@@ -12,10 +12,10 @@
 
 __title__ = 'icecream'
 __license__ = 'MIT'
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 __author__ = 'Ansgar Grunseid'
 __contact__ = 'grunseid@gmail.com'
 __url__ = 'https://github.com/gruns/icecream'
 __description__ = (
-    'Inspect variables, expressions, and program execution with a '
-    'single, simple function call.')
+    'Never use print() to debug again; inspect variables, expressions, and '
+    'program execution with a single, simple function call.')

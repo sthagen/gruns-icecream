@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# IceCream - A little library for sweet and creamy print debugging.
+# IceCream - Never use print() to debug again
 #
 # Ansgar Grunseid
 # grunseid.com
@@ -17,8 +17,8 @@ import ast
 import inspect
 import pprint
 import sys
-from contextlib import contextmanager
 from datetime import datetime
+from contextlib import contextmanager
 from os.path import basename
 from textwrap import dedent
 
@@ -68,6 +68,14 @@ def stderrPrint(*args):
     print(*args, file=sys.stderr)
 
 
+def isLiteral(s):
+    try:
+        ast.literal_eval(s)
+    except Exception:
+        return False
+    return True
+
+
 def colorizedStderrPrint(s):
     colored = colorize(s)
     with supportTerminalColorsInWindows():
@@ -83,12 +91,12 @@ DEFAULT_ARG_TO_STRING_FUNCTION = pprint.pformat
 
 class NoSourceAvailableError(OSError):
     """
-    Raised when icecream fails to find or access required source code
-    to parse and analyze. This can happen, for example, when
+    Raised when icecream fails to find or access source code that's
+    required to parse and analyze. This can happen, for example, when
 
-      - ic() is invoked inside an interactive shell, e.g. python -i
+      - ic() is invoked inside an interactive shell, e.g. python -i.
 
-      - The source code is mangled and/or packaged, like with a project
+      - The source code is mangled and/or packaged, e.g. with a project
         freezer like PyInstaller.
 
       - The underlying source code changed during execution. See
@@ -224,9 +232,22 @@ class IceCreamDebugger:
             return '%s: ' % arg
 
         pairs = [(arg, self.argToStringFunction(val)) for arg, val in pairs]
+        # For cleaner output, if <arg> is a literal, eg 3, "string", b'bytes',
+        # etc, only output the value, not the argument and the value, as the
+        # argument and the value will be identical or nigh identical. Ex: with
+        # ic("hello"), just output
+        #
+        #   ic| 'hello',
+        #
+        # instead of
+        #
+        #   ic| "hello": 'hello'.
+        #
+        pairStrs = [
+            val if isLiteral(arg) else (argPrefix(arg) + val)
+            for arg, val in pairs]
 
-        allArgsOnOneLine = self._pairDelimiter.join(
-            val if arg == val else argPrefix(arg) + val for arg, val in pairs)
+        allArgsOnOneLine = self._pairDelimiter.join(pairStrs)
         multilineArgs = len(allArgsOnOneLine.splitlines()) > 1
 
         contextDelimiter = self.contextDelimiter if context else ''
@@ -275,7 +296,7 @@ class IceCreamDebugger:
         return context
 
     def _formatTime(self):
-        now = datetime.utcnow()
+        now = datetime.now()
         formatted = now.strftime('%H:%M:%S.%f')[:-3]
         return ' at %s' % formatted
 
