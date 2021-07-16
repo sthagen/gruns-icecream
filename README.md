@@ -202,7 +202,7 @@ foo()
 
 and then in `B.py`, which is imported by `A.py`, just call `ic()`:
 
-```
+```python
 # -*- coding: utf-8 -*-
 
 def foo():
@@ -332,11 +332,12 @@ Delicious IceCream should be enjoyed in every language.
 - Rust: [icecream-rs](https://github.com/ericchang00/icecream-rs)
 - Node.js: [node-icecream](https://github.com/jmerle/node-icecream)
 - C++: [IceCream-Cpp](https://github.com/renatoGarcia/icecream-cpp)
+- C99: [icecream-c](https://github.com/chunqian/icecream-c)
 - PHP: [icecream-php](https://github.com/ntzm/icecream-php)
 - Go: [icecream-go](https://github.com/WAY29/icecream-go)
 - Ruby: [Ricecream](https://github.com/nodai2hITC/ricecream)
 - Java: [icecream-java](https://github.com/Akshay-Thakare/icecream-java)
-- R: [icecream](https://github.com/DominikRafacz/icecream)
+- R: [icecream](https://github.com/lewinfox/icecream)
 - Lua: [icecream-lua](https://github.com/wlingze/icecream-lua)
 
 If you'd like a similar `ic()` function in your favorite language, please open a
