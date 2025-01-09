@@ -87,8 +87,6 @@ setup(
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
@@ -104,7 +102,7 @@ setup(
     install_requires=[
         'colorama>=0.3.9',
         'pygments>=2.2.0',
-        'executing>=0.3.1',
+        'executing>=2.1.0',
         'asttokens>=2.0.1',
     ],
     cmdclass={
