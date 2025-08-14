@@ -82,12 +82,25 @@ def colorizedStderrPrint(s):
         stderrPrint(colored)
 
 
+def safe_pformat(obj, *args, **kwargs):
+    try:
+        return pprint.pformat(obj, *args, **kwargs)
+    except TypeError as e:
+        # Sorting likely tripped on symbolic/elementwise comparisons
+        warnings.warn(f"pprint failed ({e}); retrying without dict sorting")
+        try:
+            # Py 3.8+: disable sorting globally for all nested dicts
+            return pprint.pformat(obj, *args, sort_dicts=False, **kwargs)
+        except TypeError:
+            # Py < 3.8: last-ditch, always works
+            return repr(obj)
+
+
 DEFAULT_PREFIX = 'ic| '
 DEFAULT_LINE_WRAP_WIDTH = 70  # Characters.
 DEFAULT_CONTEXT_DELIMITER = '- '
 DEFAULT_OUTPUT_FUNCTION = colorizedStderrPrint
-DEFAULT_ARG_TO_STRING_FUNCTION = pprint.pformat
-
+DEFAULT_ARG_TO_STRING_FUNCTION = safe_pformat
 
 """
 This info message is printed instead of the arguments when icecream
