@@ -17,7 +17,19 @@ import inspect
 import pprint
 import sys
 from types import FrameType
-from typing import Optional, cast, Any, Callable, Generator, List, Sequence, Tuple, Type, Union, cast, Literal
+from typing import (
+    Optional,
+    cast,
+    Any,
+    Callable,
+    Generator,
+    List,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    Literal,
+)
 import warnings
 from datetime import datetime
 import functools
@@ -25,15 +37,15 @@ from contextlib import contextmanager
 from os.path import basename, realpath
 from textwrap import dedent
 
-import colorama
-import executing
-from pygments import highlight
+import colorama  # type: ignore
+import executing  # type: ignore
+from pygments import highlight  # type: ignore
 
 # See https://gist.github.com/XVilka/8346728 for color support in various
 # terminals and thus whether to use Terminal256Formatter or
 # TerminalTrueColorFormatter.
-from pygments.formatters import Terminal256Formatter
-from pygments.lexers import PythonLexer as PyLexer, Python3Lexer as Py3Lexer
+from pygments.formatters import Terminal256Formatter  # type: ignore
+from pygments.lexers import Python3Lexer as Py3Lexer  # type: ignore
 
 from .coloring import SolarizedDark
 
@@ -49,20 +61,32 @@ def bindStaticVariable(name: str, value: Any) -> Callable:
     return decorator
 
 
+def has_non_ascii_chars(s: str) -> bool:
+    """Check if string contains non-ASCII characters."""
+    return any(ord(char) > 127 for char in s)
+
+
 @bindStaticVariable('formatter', Terminal256Formatter(style=SolarizedDark))
 @bindStaticVariable('lexer', Py3Lexer(ensurenl=False))
 def colorize(s: str) -> str:
     self = colorize
+
+    # skip syntax highlighting for strings with non-ASCII characters to avoid
+    # encoding issues with pygments (fixes issue #222)
+    if has_non_ascii_chars(s):
+        return s
+
     return highlight(
         s,
-        cast(Py3Lexer, self.lexer),
-        cast(Terminal256Formatter, self.formatter)
+        cast(Py3Lexer, self.lexer),  # type: ignore
+        cast(Terminal256Formatter, self.formatter)  # type: ignore
     )  # pyright: ignore[reportFunctionMemberAccess]
 
 
 @contextmanager
 def supportTerminalColorsInWindows() -> Generator:
-    # Filter and replace ANSI escape sequences on Windows with equivalent Win32
+
+    # filter and replace ANSI escape sequences on Windows with equivalent Win32
     # API calls. This code does nothing on non-Windows systems.
     if sys.platform.startswith('win'):
         colorama.init()
@@ -72,8 +96,12 @@ def supportTerminalColorsInWindows() -> Generator:
         yield
 
 
-def stderrPrint(*args: object) -> None:
+def stderr_print(*args: object) -> None:
     print(*args, file=sys.stderr)
+
+
+def stdout_print(*args: object) -> None:
+    print(*args)
 
 
 def isLiteral(s: str) -> bool:
@@ -87,7 +115,7 @@ def isLiteral(s: str) -> bool:
 def colorizedStderrPrint(s: str) -> None:
     colored = colorize(s)
     with supportTerminalColorsInWindows():
-        stderrPrint(colored)
+        stderr_print(colored)
 
 
 def colorizedStdoutPrint(s: str) -> None:
@@ -176,7 +204,7 @@ NO_SOURCE_AVAILABLE_WARNING_MESSAGE = (
     'change during execution?')
 
 
-def callOrValue(obj: object) -> object:
+def call_or_value(obj: object) -> object:
     return obj() if callable(obj) else obj
 
 
@@ -190,7 +218,7 @@ class Source(executing.Source):
         return result
 
 
-def prefixLines(prefix: str, s: str, startAtLine: int = 0) -> List[str]:
+def prefix_lines(prefix: str, s: str, startAtLine: int = 0) -> List[str]:
     lines = s.splitlines()
 
     for i in range(startAtLine, len(lines)):
@@ -199,9 +227,9 @@ def prefixLines(prefix: str, s: str, startAtLine: int = 0) -> List[str]:
     return lines
 
 
-def prefixFirstLineIndentRemaining(prefix: str, s: str) -> List[str]:
+def prefix_first_line_indent_remaining(prefix: str, s: str) -> List[str]:
     indent = ' ' * len(prefix)
-    lines = prefixLines(indent, s, startAtLine=1)
+    lines = prefix_lines(indent, s, startAtLine=1)
     lines[0] = prefix + lines[0]
     return lines
 
@@ -211,15 +239,15 @@ def formatPair(prefix: str, arg: Union[str, Sentinel], value: str) -> str:
         argLines = []
         valuePrefix = prefix
     else:
-        argLines = prefixFirstLineIndentRemaining(prefix, arg)
+        argLines = prefix_first_line_indent_remaining(prefix, arg)
         valuePrefix = argLines[-1] + ': '
 
     looksLikeAString = (value[0] + value[-1]) in ["''", '""']
     if looksLikeAString:  # Align the start of multiline strings.
-        valueLines = prefixLines(' ', value, startAtLine=1)
+        valueLines = prefix_lines(' ', value, startAtLine=1)
         value = '\n'.join(valueLines)
 
-    valueLines = prefixFirstLineIndentRemaining(valuePrefix, value)
+    valueLines = prefix_first_line_indent_remaining(valuePrefix, value)
     lines = argLines[:-1] + valueLines
     return '\n'.join(lines)
 
@@ -227,7 +255,8 @@ def formatPair(prefix: str, arg: Union[str, Sentinel], value: str) -> str:
 class _SingleDispatchCallable:
     def __call__(self, *_: object) -> str:
         # This is a marker class, not a real thing you should use
-        raise NotImplementedError
+        raise NotImplementedError("This is a marker class, not a real thing you should use")
+
     register: Callable[[Type], Callable]
 
 
@@ -260,7 +289,6 @@ def argumentToString(obj: object) -> str:
 def _(obj: str) -> str:
     if '\n' in obj:
         return "'''" + obj + "'''"
-
     return "'" + obj.replace('\\', '\\\\') + "'"
 
 
@@ -268,17 +296,24 @@ class IceCreamDebugger:
     _pairDelimiter = ', '  # Used by the tests in tests/.
     lineWrapWidth = DEFAULT_LINE_WRAP_WIDTH
     contextDelimiter = DEFAULT_CONTEXT_DELIMITER
+    outputFunction: Callable[..., None]
 
     def __init__(self, prefix: Union[str, Callable[[], str]] =DEFAULT_PREFIX,
-                 outputFunction: Callable[[str], None]=DEFAULT_OUTPUT_FUNCTION,
+                 outputFunction: Callable[..., None]=DEFAULT_OUTPUT_FUNCTION,
                  argToStringFunction: Union[_SingleDispatchCallable, Callable[[Any], str]]=argumentToString, includeContext: bool=False,
-                 contextAbsPath: bool=False):
+                 contextAbsPath: bool=False,
+                 noColor: bool=False):
         self.enabled = True
         self.prefix = prefix
         self.includeContext = includeContext
-        self.outputFunction = outputFunction
         self.argToStringFunction = argToStringFunction
         self.contextAbsPath = contextAbsPath
+        self.noColor = noColor
+
+        if self.noColor and outputFunction is DEFAULT_OUTPUT_FUNCTION:
+            self.outputFunction = stderr_print
+        else:
+            self.outputFunction = outputFunction
 
     def __call__(self, *args: object) -> object:
         if self.enabled:
@@ -304,9 +339,10 @@ class IceCreamDebugger:
         return out
 
     def _format(self, callFrame: FrameType, *args: object) -> str:
-        prefix = cast(str, callOrValue(self.prefix))
 
+        prefix = cast(str, call_or_value(self.prefix))
         context = self._formatContext(callFrame)
+
         if not args:
             time = self._formatTime()
             out = prefix + context + time
@@ -318,7 +354,14 @@ class IceCreamDebugger:
 
         return out
 
-    def _formatArgs(self, callFrame: FrameType, prefix: str, context: str, args: Sequence[object]) -> str:
+    def _formatArgs(
+        self,
+        callFrame: FrameType,
+        prefix: str,
+        context: str,
+        args: Sequence[object]
+    ) -> str:
+
         callNode = Source.executing(callFrame).node
         if callNode is not None:
             assert isinstance(callNode, ast.Call)
@@ -390,7 +433,7 @@ class IceCreamDebugger:
                     formatPair('', arg, value)
                     for arg, value in pairs
                 ]
-                lines = prefixFirstLineIndentRemaining(prefix, '\n'.join(argLines))
+                lines = prefix_first_line_indent_remaining(prefix, '\n'.join(argLines))
         # ic| foo.py:11 in foo()- a: 1, b: 2
         # ic| a: 1, b: 2, c: 3
         else:
@@ -427,10 +470,16 @@ class IceCreamDebugger:
         self.enabled = False
 
     def use_stdout(self) -> None:
-        self.outputFunction = colorizedStdoutPrint
+        if self.noColor:
+            self.outputFunction = stdout_print
+        else:
+            self.outputFunction = colorizedStdoutPrint
 
     def use_stderr(self) -> None:
-        self.outputFunction = colorizedStderrPrint
+        if self.noColor:
+            self.outputFunction = stderr_print
+        else:
+            self.outputFunction = colorizedStderrPrint
 
     def configureOutput(
         self: "IceCreamDebugger",
@@ -439,12 +488,29 @@ class IceCreamDebugger:
         argToStringFunction: Union[Callable, Literal[Sentinel.absent]] = Sentinel.absent,
         includeContext: Union[bool, Literal[Sentinel.absent]] = Sentinel.absent,
         contextAbsPath: Union[bool, Literal[Sentinel.absent]] = Sentinel.absent,
-        lineWrapWidth: Union[bool, Literal[Sentinel.absent]] = Sentinel.absent
+        lineWrapWidth: Union[bool, Literal[Sentinel.absent]] = Sentinel.absent,
+        noColor: Union[bool, Literal[Sentinel.absent]] = Sentinel.absent,
     ) -> None:
         noParameterProvided = all(
             v is Sentinel.absent for k, v in locals().items() if k != 'self')
         if noParameterProvided:
             raise TypeError('configureOutput() missing at least one argument')
+
+        if noColor is not Sentinel.absent:
+            self.noColor = noColor
+            # Auto-swap built-in output functions when no explicit
+            # outputFunction is provided alongside noColor.
+            if outputFunction is Sentinel.absent:
+                if self.noColor:
+                    if self.outputFunction is colorizedStderrPrint:
+                        self.outputFunction = stderr_print
+                    elif self.outputFunction is colorizedStdoutPrint:
+                        self.outputFunction = stdout_print
+                else:
+                    if self.outputFunction is stderr_print:
+                        self.outputFunction = colorizedStderrPrint
+                    elif self.outputFunction is stdout_print:
+                        self.outputFunction = colorizedStdoutPrint
 
         if prefix is not Sentinel.absent:
             self.prefix = prefix

@@ -19,7 +19,9 @@ from contextlib import contextmanager
 from os.path import basename, splitext, realpath
 
 import icecream
-from icecream import ic, argumentToString, stderrPrint, NO_SOURCE_AVAILABLE_WARNING_MESSAGE
+from icecream import ic, argumentToString, stderr_print
+from icecream import NO_SOURCE_AVAILABLE_WARNING_MESSAGE
+from icecream.icecream import has_non_ascii_chars
 
 TEST_PAIR_DELIMITER = '| '
 MY_FILENAME = basename(__file__)
@@ -31,12 +33,12 @@ b = 2
 c = 3
 
 
-def noop(*args, **kwargs):
+def noop(*args, **kwargs):  # type: ignore
     return
 
 
-def has_ansi_escape_codes(s):
-    # Oversimplified, but ¯\_(ツ)_/¯. TODO(grun): Test with regex.
+def has_ansi_escape_codes(s: str) -> bool:
+    # oversimplified, but ¯\_(ツ)_/¯. TODO(grun): Test with regex.
     return '\x1b[' in s
 
 
@@ -45,7 +47,7 @@ class FakeTeletypeBuffer(StringIO):
     Extend StringIO to act like a TTY so ANSI control codes aren't stripped
     when wrapped with colorama's wrap_stream().
     """
-    def isatty(self):
+    def isatty(self) -> bool:
         return True
 
 
@@ -53,7 +55,7 @@ class FakeTeletypeBuffer(StringIO):
 def disable_coloring():
     originalOutputFunction = ic.outputFunction
 
-    ic.configureOutput(outputFunction=stderrPrint)
+    ic.configureOutput(outputFunction=stderr_print)
     yield
     ic.configureOutput(outputFunction=originalOutputFunction)
 
@@ -327,7 +329,7 @@ class TestIceCream(unittest.TestCase):
 
     def test_prefix_configuration(self):
         prefix = 'lolsup '
-        with configure_icecream_output(prefix, stderrPrint):
+        with configure_icecream_output(prefix, stderr_print):
             with disable_coloring(), capture_standard_streams() as (out, err):
                 ic(a)
         pair = parse_output_into_pairs(out, err, 1, prefix=prefix)[0][0]
@@ -679,6 +681,30 @@ ic| (a,
         self.assertIn("hello", s)
         self.assertIn("world", s)
 
+    def test_non_ascii_characters_no_syntax_highlighting(self):
+        """Test that non-ASCII characters skip syntax highlighting to avoid encoding issues."""
+        # Test the helper function
+        self.assertTrue(has_non_ascii_chars('Hello 世界'))
+        self.assertTrue(has_non_ascii_chars('Привет мир'))
+        self.assertFalse(has_non_ascii_chars('Hello World'))
+        self.assertFalse(has_non_ascii_chars('123 ABC'))
+        
+        # Test that non-ASCII strings don't get ANSI escape codes (no syntax highlighting)
+        with capture_standard_streams() as (out, err):
+            ic('Hello 世界')
+        
+        output = err.getvalue()
+        self.assertIn('Hello 世界', output)
+        self.assertFalse(has_ansi_escape_codes(output))  # No syntax highlighting
+        
+        # Test that ASCII strings still get syntax highlighting
+        with capture_standard_streams() as (out, err):
+            ic('Hello World')
+        
+        output = err.getvalue()
+        self.assertIn('Hello World', output)
+        self.assertTrue(has_ansi_escape_codes(output))  # Has syntax highlighting
+
     def test_sympy_solve_result_does_not_crash(self):
         """Regression: ic() must handle SymPy solve() outputs."""
 
@@ -697,3 +723,78 @@ ic| (a,
         self.assertIn("ic|", s)
         # Don’t assert exact text; just ensure something printed.
         self.assertTrue(len(s) > 0)
+
+    def test_no_color_disables_coloring(self):
+        originalNoColor = ic.noColor
+        originalOutputFunction = ic.outputFunction
+        try:
+            ic.configureOutput(noColor=True)
+            with capture_standard_streams() as (out, err):
+                ic({1: 'str'})
+            self.assertFalse(has_ansi_escape_codes(err.getvalue()))
+            self.assertIn('ic|', err.getvalue())
+        finally:
+            ic.configureOutput(noColor=originalNoColor)
+            ic.outputFunction = originalOutputFunction
+
+    def test_no_color_with_use_stdout(self):
+        originalNoColor = ic.noColor
+        originalOutputFunction = ic.outputFunction
+        try:
+            ic.configureOutput(noColor=True)
+            ic.use_stdout()
+            with capture_standard_streams() as (out, err):
+                ic({1: 'str'})
+            self.assertFalse(has_ansi_escape_codes(out.getvalue()))
+            self.assertIn('ic|', out.getvalue())
+            self.assertEqual(err.getvalue(), '')
+        finally:
+            ic.configureOutput(noColor=originalNoColor)
+            ic.outputFunction = originalOutputFunction
+
+    def test_no_color_with_use_stderr(self):
+        originalNoColor = ic.noColor
+        originalOutputFunction = ic.outputFunction
+        try:
+            ic.configureOutput(noColor=True)
+            ic.use_stderr()
+            with capture_standard_streams() as (out, err):
+                ic({1: 'str'})
+            self.assertFalse(has_ansi_escape_codes(err.getvalue()))
+            self.assertIn('ic|', err.getvalue())
+        finally:
+            ic.configureOutput(noColor=originalNoColor)
+            ic.outputFunction = originalOutputFunction
+
+    def test_no_color_toggle(self):
+        originalNoColor = ic.noColor
+        originalOutputFunction = ic.outputFunction
+        try:
+            # Disable colors
+            ic.configureOutput(noColor=True)
+            with capture_standard_streams() as (out, err):
+                ic({1: 'str'})
+            self.assertFalse(has_ansi_escape_codes(err.getvalue()))
+
+            # Re-enable colors
+            ic.configureOutput(noColor=False)
+            with capture_standard_streams() as (out, err):
+                ic({1: 'str'})
+            self.assertTrue(has_ansi_escape_codes(err.getvalue()))
+        finally:
+            ic.configureOutput(noColor=originalNoColor)
+            ic.outputFunction = originalOutputFunction
+
+    def test_no_color_with_explicit_output_function(self):
+        originalNoColor = ic.noColor
+        originalOutputFunction = ic.outputFunction
+        captured = []
+        custom_func = lambda s: captured.append(s)
+        try:
+            ic.configureOutput(noColor=True, outputFunction=custom_func)
+            ic(123)
+            self.assertTrue(len(captured) > 0)
+            self.assertIs(ic.outputFunction, custom_func)
+        finally:
+            ic.configureOutput(noColor=originalNoColor)
+            ic.outputFunction = originalOutputFunction
