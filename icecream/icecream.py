@@ -112,14 +112,21 @@ def isLiteral(s: str) -> bool:
     return True
 
 
+def _stream_is_tty(stream: object) -> bool:
+    # isatty() returns True only when the stream is connected to a real
+    # terminal (not a pipe, file redirect, or captured output).  We guard
+    # with hasattr() because some custom stream objects omit the method.
+    return hasattr(stream, 'isatty') and bool(getattr(stream, 'isatty')())
+
+
 def colorizedStderrPrint(s: str) -> None:
-    colored = colorize(s)
+    colored = colorize(s) if _stream_is_tty(sys.stderr) else s
     with supportTerminalColorsInWindows():
         stderr_print(colored)
 
 
 def colorizedStdoutPrint(s: str) -> None:
-    colored = colorize(s)
+    colored = colorize(s) if _stream_is_tty(sys.stdout) else s
     with supportTerminalColorsInWindows():
         print(colored)
 
